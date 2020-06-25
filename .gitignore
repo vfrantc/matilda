@@ -1,2 +1,5 @@
 matilda.egg-info/
 .idea/
+notebooks/.ipynb_checkpoints
+Pipfile.lock
+

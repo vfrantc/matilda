@@ -4,7 +4,15 @@ import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
 
-__all__ == ['make_filter_bank', 'show_kernel', 'show_filter_bank']
+__all__ = ['make_filter_bank',
+           'show_filter_bank',
+           'get_available']
+
+
+AVAILABLE_TRANSFORMS = ('dct', 'wlsh', 'slant', 'chebychev')
+
+def get_available():
+    return AVAILABLE_TRANSFORMS
 
 def _chebychev_filters(n=3, groups=1, expand_dim=1, level=None, DC=True, l1_norm=True):
     # Use one of predefined matrices
@@ -139,7 +147,7 @@ def gaussian_kernel(sigma=1.0):
     return tf.convert_to_tensor(kernel.reshape(filter_size, filter_size, 1, 1), dtype=tf.float32)
 
 
-def show_filter(kernel, ax):
+def show_kernel(kernel, ax):
     height, width = kernel.shape[:2]
 
     # Limits for the extent
@@ -167,17 +175,27 @@ def show_filter(kernel, ax):
     plt.yticks([])
 
 
-def show_filterbank(fb, figsize=(16, 12)):
+def show_filter_bank(fb, figsize=(16, 12)):
     num_filters = fb.shape[-1]
-    grd_x = grd_y = int(math.sqrt(num_filters))
+    grd_x = grd_y = int(fb.shape[0])
 
     fig = plt.figure(figsize=figsize)
     for f_idx in range(num_filters):
         ax = fig.add_subplot(grd_x, grd_y, f_idx + 1)
         kernel = fb[:, :, :, f_idx].squeeze()
-        show_filter(kernel=kernel, ax=ax)
+        show_kernel(kernel=kernel, ax=ax)
+        plt.title('[{}, {}]'.format(f_idx // grd_x, f_idx % grd_x))
+    fig.tight_layout()
     plt.show()
 
-
-def make_filter_bank(type='dct', n=4, groups=1, expand_dim=1, level=None, DC=True, l1_norm=True):
-    pass
+def make_filter_bank(ftype='dct', n=4, groups=1, expand_dim=2, level=None, DC=True, l1_norm=True):
+    assert ftype in AVAILABLE_TRANSFORMS
+    fname = ftype.strip().lower()
+    if fname == 'dct':
+        return _dct_filters(n=n, groups=groups, expand_dim=expand_dim, level=level, DC=DC, l1_norm=l1_norm)
+    elif fname == 'wlsh':
+        return _wlsh_filters(n=n, groups=groups, expand_dim=expand_dim, level=level, DC=DC, l1_norm=l1_norm)
+    elif fname == 'slant':
+        return _slant_filters(n=n, groups=groups, expand_dim=expand_dim, level=level, DC=DC, l1_norm=l1_norm)
+    elif fname == 'chebychev':
+        return _chebychev_filters(n=n, groups=groups, expand_dim=expand_dim, level=level, DC=DC, l1_norm=l1_norm)
