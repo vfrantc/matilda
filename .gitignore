@@ -2,4 +2,6 @@ matilda.egg-info/
 .idea/
 notebooks/.ipynb_checkpoints
 Pipfile.lock
+matilda/__pycache__/
+
 
