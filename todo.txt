@@ -1,0 +1,4 @@
+1. Notebook to prepare and visualize 4 types of filters
+2. Notebook with lambda-harmonic network
+3. Notebook with deformable-lambda-harmonic network
+4. Notebook with alpha-network
