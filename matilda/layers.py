@@ -19,7 +19,7 @@ class HarmonicTransform(tf.keras.layers.Layer):
 
     def call(self, x_input, training=False):
         # split input
-        groups = tf.split(x_input, axis=3, num_or_size_splits=3)
+        groups = tf.split(x_input, axis=3, num_or_size_splits=x_input.shape[-1])
 
         # convolve every input channel with the filter bank
         conv_groups = [tf.nn.conv2d(input=group,
@@ -36,8 +36,35 @@ class HarmonicTransform(tf.keras.layers.Layer):
                        'level': self._level,
                        'strides': self._strides})
 
-class HarmonicCombine():
-    pass
+
+class HarmonicCombine(tf.keras.layers.Layer):
+
+    def __init__(self, filters, activation=None, **kwargs):
+        super().__init__(**kwargs)
+        self._filters = filters
+        if activation is not None:
+            self._activation = tf.keras.activations.get(activation)
+        else:
+            self._activation = None
+
+    def build(self, input_shape):
+        self.kernel = self.add_weight(shape=(1, 1, input_shape[-1], self._filters),
+                                      initializer='glorot_normal',
+                                      trainable=True)
+        self.built = True
+
+    def call(self, x_input, training=False):
+        x = tf.nn.conv2d(x_input, filters=self.kernel, strides=(1, 1, 1, 1), padding='SAME')
+        if self._activation is not None:
+            x = self._activation(x)
+        return x
+
+    def get_config(self):
+        config = super().get_config()
+        config.update({'filters': self._filters,
+                       'activation': self._activation})
+        return config
+
 
 class LinHarmonic():
     pass
@@ -249,14 +276,26 @@ class DeformOffset(tf.keras.layers.Conv2D):
         pixel_idx = tf.stack([b, y, x], axis=-1)
         return tf.gather_nd(inputs, pixel_idx)
 
-class AlphaLayer():
-    pass
 
 
 if __name__ == '__main__':
-    print(tf.__version__)
-    input = tf.keras.layers.Input(shape=(28, 28, 1))
-    layer = DeformOffset(32, [5, 5], num_deformable_group=1)
-    output = layer(input)
-    model = tf.keras.models.Model(inputs=input, outputs=output)
-    print(model(np.random.random((1, 28, 28, 1))))
+    (x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar10.load_data()
+    x_train = (x_train.astype(np.float32) / 127.5) - 1
+    x_test = (x_test.astype(np.float32) / 127.5) - 1
+    y_train = tf.keras.utils.to_categorical(y_train)
+    y_test = tf.keras.utils.to_categorical(y_test)
+
+    model = tf.keras.models.Sequential([
+        DeformOffset(32, [5, 5], num_deformable_group=1, input_shape=(32, 32, 3)),
+        HarmonicTransform(ftype='dct', n=5, strides=(1, 5, 5, 1)),
+        HarmonicCombine(32, activation='relu'),
+        tf.keras.layers.Conv2D(32, [5, 5], activation='relu'),
+        tf.keras.layers.MaxPool2D(2, [2, 2]),
+        tf.keras.layers.Conv2D(32, [5, 5], activation='relu'),
+        tf.keras.layers.Conv2D(32, [5, 5], activation='relu'),
+        tf.keras.layers.MaxPool2D(2, [2, 2]),
+        tf.keras.layers.Flatten(),
+        tf.keras.layers.Dense(10, activation='softmax')])
+
+    model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+    history = model.fit(x_train, y_train, batch_size=50, epochs=1, validation_data=(x_test, y_test))
