@@ -1,6 +1,6 @@
 matilda.egg-info/
 .idea/
-notebooks/.ipynb_checkpoints
+notebooks/.ipynb_checkpoints/*
 matilda/__pycache__/
 
 

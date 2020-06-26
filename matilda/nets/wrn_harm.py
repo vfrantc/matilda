@@ -1,11 +1,14 @@
 import tensorflow as tf
 
+from matilda.layers import Harmonic
+from matilda.layers import LinearHarmonic
+
 weight_decay = 0.0005
 
 def block(x, width, stride, dropout):
     o1 = tf.keras.layers.BatchNormalization(axis=-1, momentum=0.1, epsilon=1e-5,  gamma_initializer='uniform')(x)
     o1 = tf.keras.layers.Activation('relu')(o1)
-    y = tf.keras.layers.Conv2D(width,
+    y = LinearHarmonic(width,
                        kernel_size=(3, 3),
                        strides=(stride, stride),
                        padding='same',
@@ -27,7 +30,7 @@ def block(x, width, stride, dropout):
                       kernel_regularizer=tf.keras.regularizers.l2(weight_decay),
                       use_bias=False)(o2)
     if z.shape[-1] != x.shape[-1]:
-        side_conv = tf.keras.layers.Conv2D(width,
+        side_conv = LinearHarmonic(width,
                                   kernel_size=(3, 3),
                                   strides=(stride, stride),
                                   padding='same',
@@ -40,11 +43,11 @@ def block(x, width, stride, dropout):
 
     return x
 
+
 def group(x, n, width, stride, dropout):
     for i in range(n):
         x = block(x, width, stride if i==0 else 1, dropout)
     return x
-
 
 def wrn(input_shape, depth=16, width=8, num_classes=10, dropout=0.3):
     assert (depth - 4) % 6 == 0, 'depth should be 6n+4'
@@ -52,7 +55,7 @@ def wrn(input_shape, depth=16, width=8, num_classes=10, dropout=0.3):
     widths = [int(v * width) for v in (16, 32, 64)]
 
     inputs = tf.keras.layers.Input(shape=input_shape, name="image")
-    x = tf.keras.layers.Conv2D(16, kernel_size=3, activation=None)(inputs)
+    x = Harmonic(16, kernel_size=3, activation=None)(inputs)
     x = tf.keras.layers.BatchNormalization()(x)
     x = tf.keras.layers.Activation('relu')(x)
 

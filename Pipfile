@@ -8,6 +8,10 @@ name = "pypi"
 [requires]
 python_version = "3.7"
 
+[packages]
+jupyter = "*"
+opencv-python = "*"
+
 [packages.e1839a8]
 path = "."
 editable = true

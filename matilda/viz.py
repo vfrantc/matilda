@@ -1,7 +1,7 @@
 import math
-import numpy as np
 
 import cv2
+import numpy as np
 import pandas as pd
 import tensorflow as tf
 import matplotlib.pyplot as plt
@@ -95,8 +95,6 @@ def imshow(images, scale=2, name=''):
         plt.yticks([])
 
     plt.show()
-
-
 
 
 def show_matrix(mat, figsize=(5, 5), title=''):
