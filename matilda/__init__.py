@@ -14,3 +14,7 @@ from .util import get_strategy
 from .viz import plot_confusion_matrix
 from .viz import draw_hist
 from .viz import imshow
+
+from .nets import wrn
+from .nets import wrn_deform_harm
+from .nets import wrn_harm
