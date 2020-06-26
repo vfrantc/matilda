@@ -1,13 +1,14 @@
 import numpy as np
 import tensorflow as tf
+from matilda.transform import make_filter_bank
 
 class AlphaRooting(tf.keras.layers.Layer):
   def __init__(self, initial_alpha, output=16, size=3):
-    super(AlphaHarmonicLayer, self).__init__()
+    super(AlphaRooting, self).__init__()
     self._initial_alpha = initial_alpha
     self._size = size
     self._output = output
-    self._filters = tf.Variable(initial_value = chebychev_filters(n=size, groups=1, expand_dim=2),
+    self._filters = tf.Variable(initial_value = make_filter_bank(n=size, groups=1, expand_dim=2),
                                 trainable=False)
     #self.batch_norm = tf.keras.layers.BatchNormalization()
 

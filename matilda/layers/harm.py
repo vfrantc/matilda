@@ -2,10 +2,8 @@ import numpy as np
 import tensorflow as tf
 from matilda.transform import make_filter_bank
 
-
 class Harmonic():
     pass
-
 
 class HarmonicTransform(tf.keras.layers.Layer):
     '''Performs orthogonal transform'''
@@ -70,22 +68,6 @@ class HarmonicCombine(tf.keras.layers.Layer):
                        'activation': self._activation})
         return config
 
-'''
-    def gen_harmonic_params(ni, no, k, normalize=False, level=None, linear=False):
-        nf = k**2 if level is None else level * (level+1) // 2
-        paramdict = {'conv': utils.dct_params(ni, no, nf) if linear else utils.conv_params(ni*nf, no, 1)}
-        if normalize and not linear:
-            paramdict.update({'bn': utils.bnparams(ni*nf, affine=False)})
-        return paramdict
-'''
-
-'''
-def lin_harmonic_block(x, params, base, mode, stride=1, padding=1):
-    filt = torch.sum(params[base + '.conv'] * params['dct'][:x.size(1), ...], dim=2)
-    y = F.conv2d(x, filt, stride=stride, padding=padding)
-    return y
-'''
-
 
 class LinearHarmonic(tf.keras.layers.Conv2D):
     # TODO: Adopt the implementation from pytorch implementation above
@@ -93,6 +75,8 @@ class LinearHarmonic(tf.keras.layers.Conv2D):
     def __init__(self,
                  filters,
                  kernel_size,
+                 ftype='dct',
+                 level=None,
                  strides=(1, 1),
                  padding='valid',
                  data_format=None,
@@ -124,13 +108,30 @@ class LinearHarmonic(tf.keras.layers.Conv2D):
             kernel_constraint=kernel_constraint,
             bias_constraint=bias_constraint,
             **kwargs)
+        self.ftype = ftype
+        self.level = level
         self.filter_bank = None
         self.kernel = None
         self.bias = None
 
     def build(self, input_shape):
-        input_dim = int(input_shape[-1])
-        kernel_shape = self.kernel_size + (input_dim, self.filters)
+        in_channels = int(input_shape[-1])
+        out_channels = self.filters
+        filters = make_filter_bank(ftype=self.ftype, n=self.kernel_size[0], level=self.level)
+        num_filters = filters.shape[-1]
+
+        filters = np.random.random((3, 3, 1, num_filters))
+        filters = filters[:, :, :, np.newaxis, :]
+        filters = np.tile(filters, [1, 1, in_channels, out_channels, 1])
+        filters = tf.convert_to_tensor(filters)
+
+        self.filter_bank = tf.Variable(initial_value=filters,
+                                       name='filter_bank',
+                                       trainable=False)
+
+
+        kernel_shape = (1, 1, in_channels, out_channels, num_filters)
+
         self.kernel = self.add_weight(
             name='kernel',
             shape=kernel_shape,
@@ -150,22 +151,10 @@ class LinearHarmonic(tf.keras.layers.Conv2D):
                 trainable=True,
                 dtype=self.dtype)
 
-        self.filter_bank = tf.Variable(initial_value=make_filter_bank(ftype=ftype, n=n, level=level),
-                                       trainable=False)
-
         self.built = True
 
     def call(self, x_input, training=False):
-        filt = torch.sum(params[base + '.conv'] * params['dct'][:x.size(1), ...], dim=2)
-        y = F.conv2d(x, filt, stride=stride, padding=padding)
+        filt = tf.reduce_sum(self.kernel * self.filter_bank, axis=-1)
+        return tf.nn.conv2d(x_input, filters=filt, strides=self.strides, padding=self.padding)
 
-        # split input
-        groups = tf.split(x_input, axis=3, num_or_size_splits=x_input.shape[-1])
-
-        # convolve every input channel with the filter bank
-        conv_groups = [tf.nn.conv2d(input=group,
-                                    filters=self.filter_bank,
-                                    strides=self._strides,
-                                    padding='SAME') for group in groups]
-        # concatenate output feature maps
-        return tf.concat(conv_groups, axis=3)
+if __name__ == '__main__':

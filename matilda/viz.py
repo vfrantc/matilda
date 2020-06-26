@@ -95,10 +95,3 @@ def imshow(images, scale=2, name=''):
         plt.yticks([])
 
     plt.show()
-
-
-def show_matrix(mat, figsize=(5, 5), title=''):
-    fig = plt.figure(figsize=figsize)
-    ax = plt.gca()
-    show_filter(mat, ax)
-    plt.show()
