@@ -96,6 +96,7 @@ class DeformOffset(tf.keras.layers.Conv2D):
         else:
             batch_size = int(inputs.get_shape()[0])
 
+
         channel_in = int(inputs.get_shape()[-1])
         in_h, in_w = [int(i) for i in inputs.get_shape()[1: 3]]  # input feature map size
         out_h, out_w = [int(i) for i in offset.get_shape()[1: 3]]  # output feature map size
