@@ -65,9 +65,106 @@ class HarmonicCombine(tf.keras.layers.Layer):
                        'activation': self._activation})
         return config
 
+'''
+    def gen_harmonic_params(ni, no, k, normalize=False, level=None, linear=False):
+        nf = k**2 if level is None else level * (level+1) // 2
+        paramdict = {'conv': utils.dct_params(ni, no, nf) if linear else utils.conv_params(ni*nf, no, 1)}
+        if normalize and not linear:
+            paramdict.update({'bn': utils.bnparams(ni*nf, affine=False)})
+        return paramdict
+'''
 
-class LinHarmonic():
-    pass
+'''
+def lin_harmonic_block(x, params, base, mode, stride=1, padding=1):
+    filt = torch.sum(params[base + '.conv'] * params['dct'][:x.size(1), ...], dim=2)
+    y = F.conv2d(x, filt, stride=stride, padding=padding)
+    return y
+'''
+
+class LinHarmonic(tf.keras.layers.Conv2D):
+
+    def __init__(self,
+                 filters,
+                 kernel_size,
+                 strides=(1, 1),
+                 padding='valid',
+                 data_format=None,
+                 dilation_rate=(1, 1),
+                 activation=None,
+                 use_bias=True,
+                 kernel_initializer='glorot_uniform',
+                 bias_initializer='zeros',
+                 kernel_regularizer=None,
+                 bias_regularizer=None,
+                 activity_regularizer=None,
+                 kernel_constraint=None,
+                 bias_constraint=None,
+                 **kwargs):
+        super().__init__(
+            filters=filters,
+            kernel_size=kernel_size,
+            strides=strides,
+            padding=padding,
+            data_format=data_format,
+            dilation_rate=dilation_rate,
+            activation=activation,
+            use_bias=use_bias,
+            kernel_initializer=kernel_initializer,
+            bias_initializer=bias_initializer,
+            kernel_regularizer=kernel_regularizer,
+            bias_regularizer=bias_regularizer,
+            activity_regularizer=activity_regularizer,
+            kernel_constraint=kernel_constraint,
+            bias_constraint=bias_constraint,
+        **kwargs)
+        self.filter_bank = None
+        self.kernel = None
+        self.bias = None
+
+    def build(self, input_shape):
+        input_dim = int(input_shape[-1])
+        kernel_shape = self.kernel_size + (input_dim, self.filters)
+        self.kernel = self.add_weight(
+            name='kernel',
+            shape=kernel_shape,
+            initializer=self.kernel_initializer,
+            regularizer=self.kernel_regularizer,
+            constraint=self.kernel_constraint,
+            trainable=True,
+            dtype=self.dtype)
+
+        if self.use_bias:
+            self.bias = self.add_weight(
+                name='bias',
+                shape=(self.filters, ),
+                initializer=self.bias_initializer,
+                regularizer=self.bias_regularizer,
+                constraint=self.bias_constraint,
+                trainable=True,
+                dtype=self.dtype)
+
+        self.filter_bank = tf.Variable(initial_value=make_filter_bank(ftype=ftype, n=n, level=level),
+                                       trainable=False)
+
+        self.built = True
+
+    def call(self, x_input, training=False):
+        filt = torch.sum(params[base + '.conv'] * params['dct'][:x.size(1), ...], dim=2)
+        y = F.conv2d(x, filt, stride=stride, padding=padding)
+        
+        # split input
+        groups = tf.split(x_input, axis=3, num_or_size_splits=x_input.shape[-1])
+
+        # convolve every input channel with the filter bank
+        conv_groups = [tf.nn.conv2d(input=group,
+                                    filters=self.filter_bank,
+                                    strides=self._strides,
+                                    padding='SAME') for group in groups]
+        # concatenate output feature maps
+        return tf.concat(conv_groups, axis=3)
+
+
+
 
 class DeformOffset(tf.keras.layers.Conv2D):
     """Only support "channel last" data format"""
