@@ -158,7 +158,7 @@ class LinearHarmonic(tf.keras.layers.Conv2D):
         conv = tf.nn.conv2d(x_input, filters=filt, strides=self.strides, padding=self.padding.upper())
         if self.use_bias:
             conv += self.bias
-        return conv
+        return self.activation(conv)
 
 
 if __name__ == '__main__':
