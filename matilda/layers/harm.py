@@ -123,7 +123,7 @@ class LinearHarmonic(tf.keras.layers.Conv2D):
         filters = np.random.random((3, 3, 1, num_filters))
         filters = filters[:, :, :, np.newaxis, :]
         filters = np.tile(filters, [1, 1, in_channels, out_channels, 1])
-        filters = tf.convert_to_tensor(filters)
+        filters = tf.convert_to_tensor(filters, dtype=tf.float32)
 
         self.filter_bank = tf.Variable(initial_value=filters,
                                        name='filter_bank',
@@ -155,6 +155,30 @@ class LinearHarmonic(tf.keras.layers.Conv2D):
 
     def call(self, x_input, training=False):
         filt = tf.reduce_sum(self.kernel * self.filter_bank, axis=-1)
-        return tf.nn.conv2d(x_input, filters=filt, strides=self.strides, padding=self.padding)
+        conv = tf.nn.conv2d(x_input, filters=filt, strides=self.strides, padding=self.padding.upper())
+        if self.use_bias:
+            conv += self.bias
+        return conv
+
 
 if __name__ == '__main__':
+    (x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar10.load_data()
+    x_train = (x_train.astype(np.float32) / 127.5) - 1
+    x_test = (x_test.astype(np.float32) / 127.5) - 1
+    y_train = tf.keras.utils.to_categorical(y_train)
+    y_test = tf.keras.utils.to_categorical(y_test)
+
+    model = tf.keras.models.Sequential([
+        tf.keras.layers.Input(shape=(32, 32, 3)),
+        HarmonicTransform(ftype='dct', n=3, strides=(1, 1, 1, 1)),
+        HarmonicCombine(32, activation='relu'),
+        LinearHarmonic(32, [3, 3], activation='relu'),
+        tf.keras.layers.MaxPool2D(2, [2, 2]),
+        LinearHarmonic(32, [3, 3], activation='relu'),
+        LinearHarmonic(32, [3, 3], activation='relu'),
+        tf.keras.layers.MaxPool2D(2, [2, 2]),
+        tf.keras.layers.Flatten(),
+        tf.keras.layers.Dense(10, activation='softmax')])
+
+    model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+    history = model.fit(x_train, y_train, batch_size=64, epochs=20, validation_data=(x_test, y_test))
