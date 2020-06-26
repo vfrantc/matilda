@@ -78,7 +78,7 @@ class DeformOffset(tf.keras.layers.Conv2D):
         self.built = True
 
 
-    def call(self, inputs, training=None, **kwargs):
+    def call(self, inputs, training=None):
         # get offset, shape [batch_size, out_h, out_w, filter_h, * filter_w * channel_out * 2]
         offset = tf.nn.conv2d(inputs,
                               filters=self.offset_layer_kernel,
@@ -92,7 +92,7 @@ class DeformOffset(tf.keras.layers.Conv2D):
 
         # some length
         if inputs.get_shape()[0] is None:
-            batch_size = 1
+            batch_size = 64
         else:
             batch_size = int(inputs.get_shape()[0])
 
@@ -207,3 +207,28 @@ class DeformOffset(tf.keras.layers.Conv2D):
         b = tf.tile(batch_idx, (1, h, w, n))
         pixel_idx = tf.stack([b, y, x], axis=-1)
         return tf.gather_nd(inputs, pixel_idx)
+
+if __name__ == '__main__':
+    import matilda as mt
+
+    (x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar10.load_data()
+    x_train = (x_train.astype(np.float32) / 127.5) - 1
+    x_test = (x_test.astype(np.float32) / 127.5) - 1
+    y_train = tf.keras.utils.to_categorical(y_train)
+    y_test = tf.keras.utils.to_categorical(y_test)
+
+    model = tf.keras.models.Sequential([
+        tf.keras.layers.Input(shape=(32, 32, 3)),
+        DeformOffset(32, [4, 4], num_deformable_group=1),
+        mt.HarmonicTransform(ftype='dct', n=4, strides=(1, 4, 4, 1)),
+        mt.HarmonicCombine(32, activation='relu'),
+        tf.keras.layers.Conv2D(32, kernel_size=(4, 4), activation='relu'),
+        tf.keras.layers.MaxPool2D(2, [2, 2]),
+        tf.keras.layers.Conv2D(64, [4, 4], activation='relu'),
+        tf.keras.layers.Conv2D(64, [4, 4], activation='relu'),
+        tf.keras.layers.MaxPool2D(2, [2, 2]),
+        tf.keras.layers.Flatten(),
+        tf.keras.layers.Dense(10, activation='softmax')])
+    model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+    history = model.fit(x_train, y_train, batch_size=64, epochs=20, validation_data=(x_test, y_test))
+    print(max(history.history['val_accuracy']))

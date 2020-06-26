@@ -1,5 +1,6 @@
 import tensorflow as tf
 
+from matilda.layers import DeformOffset
 from matilda.layers import HarmonicTransform
 from matilda.layers import HarmonicCombine
 from matilda.layers import LinearHarmonic
@@ -50,13 +51,14 @@ def group(x, n, width, stride, dropout):
         x = block(x, width, stride if i==0 else 1, dropout)
     return x
 
-def wrn_harm(input_shape, depth=16, width=8, num_classes=10, dropout=0.3):
+def wrn_deform_harm(input_shape, depth=16, width=8, num_classes=10, dropout=0.3):
     assert (depth - 4) % 6 == 0, 'depth should be 6n+4'
     n = (depth - 4) // 6
     widths = [int(v * width) for v in (16, 32, 64)]
 
     inputs = tf.keras.layers.Input(shape=input_shape, name="image")
-    x = HarmonicTransform(ftype='dct', n=3, strides=(1, 1, 1, 1))(inputs)
+    x = DeformOffset(16, [3, 3], num_deformable_group=1)(inputs)
+    x = HarmonicTransform(ftype='dct', n=3, strides=(1, 3, 3, 1))(x)
     x = tf.keras.layers.BatchNormalization()(x)
     x = HarmonicCombine(16, activation='relu')(x)
 
