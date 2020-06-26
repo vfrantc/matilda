@@ -1,3 +1,4 @@
+import numpy as np
 import tensorflow as tf
 import tensorflow_datasets as tfds
 AUTO = tf.data.experimental.AUTOTUNE
@@ -29,7 +30,7 @@ class STL10(object):
         return self.test.cache().map(self._normalize, num_parallel_calls=AUTO).batch(batch_size)
 
     def get_train(self, batch_size):
-        return self.train.cache().shuffle(self.num_train_samples//4).map(augment, num_parallel_calls=AUTO).repeat().batch(batch_size).prefetch(AUTO)
+        return self.train.cache().shuffle(self.num_train_samples//4).map(self._augment, num_parallel_calls=AUTO).repeat().batch(batch_size).prefetch(AUTO)
 
     def _count(self, ds):
         n = 0
