@@ -173,14 +173,22 @@ def show_filter_bank(fb, figsize=(16, 12)):
     fig.tight_layout()
     plt.show()
 
-def make_filter_bank(ftype='dct', n=4, groups=1, expand_dim=2, level=None, DC=True, l1_norm=True):
+def make_filter_bank(ftype='dct', n=4, level=None, DC=True, l1_norm=True):
     assert ftype in AVAILABLE_TRANSFORMS
     fname = ftype.strip().lower()
+    filters = None
     if fname == 'dct':
-        return _dct_filters(n=n, groups=groups, expand_dim=expand_dim, level=level, DC=DC, l1_norm=l1_norm)
+        filters = _dct_filters(n=n, groups=1, expand_dim=2, level=None, DC=DC, l1_norm=l1_norm)
     elif fname == 'wlsh':
-        return _wlsh_filters(n=n, groups=groups, expand_dim=expand_dim, level=level, DC=DC, l1_norm=l1_norm)
+        filters = _wlsh_filters(n=n, groups=1, expand_dim=2, level=None, DC=DC, l1_norm=l1_norm)
     elif fname == 'slant':
-        return _slant_filters(n=n, groups=groups, expand_dim=expand_dim, level=level, DC=DC, l1_norm=l1_norm)
+        filters = _slant_filters(n=n, groups=1, expand_dim=2, level=None, DC=DC, l1_norm=l1_norm)
     elif fname == 'chebychev':
-        return _chebychev_filters(n=n, groups=groups, expand_dim=expand_dim, level=level, DC=DC, l1_norm=l1_norm)
+        filters = _chebychev_filters(n=n, groups=1, expand_dim=2, level=None, DC=DC, l1_norm=l1_norm)
+
+    idxs = [n*i+j for i,j in level]
+    return filters [..., idxs]
+
+if __name__ == '__main__':
+    filters = make_filter_bank(ftype='dct', n=4, level=[(0, 0), (0, 1), (1, 1)])
+    show_filter_bank(filters)

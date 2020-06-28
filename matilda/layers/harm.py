@@ -14,6 +14,7 @@ class HarmonicTransform(tf.keras.layers.Layer):
         self._n = n
         self._level = level
         self._strides = strides
+
         self.filter_bank = tf.Variable(initial_value=make_filter_bank(ftype=ftype, n=n, level=level),
                                        trainable=False)
 
