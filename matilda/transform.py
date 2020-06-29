@@ -186,8 +186,10 @@ def make_filter_bank(ftype='dct', n=4, level=None, DC=True, l1_norm=True):
     elif fname == 'chebychev':
         filters = _chebychev_filters(n=n, groups=1, expand_dim=2, level=None, DC=DC, l1_norm=l1_norm)
 
-    idxs = [n*i+j for i,j in level]
-    return filters [..., idxs]
+    if level is not None:
+        idxs = [n*i+j for i,j in level]
+        filters = filters[..., idxs]
+    return filters
 
 if __name__ == '__main__':
     filters = make_filter_bank(ftype='dct', n=4, level=[(0, 0), (0, 1), (1, 1)])
