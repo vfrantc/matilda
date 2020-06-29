@@ -1,3 +1,5 @@
 1. Add support of skin cancer dataset
 2. Add harmonic network
 3. Add network with deformable component
+
+1. Regular

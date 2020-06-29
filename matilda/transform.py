@@ -134,6 +134,7 @@ def _slant_filters(n=4, groups=1, expand_dim=1, level=None, DC=True, l1_norm=Tru
 
 
 def _wlsh_paley_filters(n=4, groups=1, expand_dim=1, level=None, DC=True, l1_norm=True):
+    # TODO: check why it is the same as regular walsh
     assert n in (1, 2, 4, 8)
 
     def wlsh_paley(N):
