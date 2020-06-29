@@ -6,6 +6,7 @@ class DeformOffset(tf.keras.layers.Conv2D):
     def __init__(self,
                  filters,
                  kernel_size,
+                 batch_size=128,
                  strides=(1, 1),
                  padding='valid',
                  data_format=None,
@@ -43,6 +44,7 @@ class DeformOffset(tf.keras.layers.Conv2D):
             bias_constraint=bias_constraint,
             **kwargs)
 
+        self._batch_size = batch_size
         self.offset_layer_kernel = None
         self.offset_layer_bias = None
         if num_deformable_group is None:
@@ -91,11 +93,9 @@ class DeformOffset(tf.keras.layers.Conv2D):
         inputs = self._pad_input(inputs)
 
         # some length
-        if inputs.get_shape()[0] is None:
-            batch_size = 64
-        else:
+        batch_size = self._batch_size
+        if inputs.get_shape()[0] is not None:
             batch_size = int(inputs.get_shape()[0])
-
 
         channel_in = int(inputs.get_shape()[-1])
         in_h, in_w = [int(i) for i in inputs.get_shape()[1: 3]]  # input feature map size
