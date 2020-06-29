@@ -132,6 +132,43 @@ def _slant_filters(n=4, groups=1, expand_dim=1, level=None, DC=True, l1_norm=Tru
     filter_bank = np.tile(np.expand_dims(filter_bank, axis=expand_dim), (1,1,1,groups))
     return filter_bank
 
+
+def _wlsh_paley_filters(n=4, groups=1, expand_dim=1, level=None, DC=True, l1_norm=True):
+    assert n in (1, 2, 4, 8)
+
+    def wlsh_paley(N):
+        if N == 1:
+            return np.array([[1]], dtype=np.float32)
+
+        downsize = wlsh_paley(N // 2)
+        return np.vstack([np.kron(downsize, np.array([[1, 1]], dtype=np.float32)),
+                          np.kron(downsize, np.array([[1, -1]], dtype=np.float32))])
+
+    H = wlsh_paley(n).tolist()
+    H.sort(key=lambda x: sum(map(lambda a: a[0] * a[1] < 0, zip(x[1:], x[:-1]))))
+    H = np.array(H, dtype=np.float32)
+
+    if level is None:
+        filter_bank = np.zeros((n, n, n ** 2 - int(not DC)), dtype=np.float32)
+    else:
+        filter_bank = np.zeros((n, n, level * (level + 1) // 2 - int(not DC)), dtype=np.float32)
+
+    m = 0
+    for i in range(n):
+        for k in range(n):
+            if (not DC and i == 0 and k == 0) or (not level is None and i + k >= level):
+                continue
+
+            filter_bank[:, :, m] = H[i, :].reshape(n, -1).dot(H[k, :].reshape(-1, n))
+
+            if l1_norm:
+                filter_bank[:, :, m] /= np.sum(np.abs(filter_bank[:, :, m]))
+
+            m += 1
+    filter_bank = np.tile(np.expand_dims(filter_bank, axis=expand_dim), (1, 1, 1, groups))
+    return filter_bank
+
+
 def show_kernel(kernel, ax):
     height, width = kernel.shape[:2]
 
@@ -185,6 +222,8 @@ def make_filter_bank(ftype='dct', n=4, level=None, DC=True, l1_norm=True):
         filters = _slant_filters(n=n, groups=1, expand_dim=2, level=None, DC=DC, l1_norm=l1_norm)
     elif fname == 'chebychev':
         filters = _chebychev_filters(n=n, groups=1, expand_dim=2, level=None, DC=DC, l1_norm=l1_norm)
+    elif fname == 'paley':
+        filters = _wlsh_paley_filters(n=n, groups=1, expand_dim=2, level=None, DC=DC, l1_norm=l1_norm)
 
     if level is not None:
         idxs = [n*i+j for i,j in level]
