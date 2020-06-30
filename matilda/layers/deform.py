@@ -1,5 +1,6 @@
 import numpy as np
 import tensorflow as tf
+import tensorflow.keras.backend as K
 
 class DeformOffset(tf.keras.layers.Conv2D):
     """Only support "channel last" data format"""
@@ -81,6 +82,7 @@ class DeformOffset(tf.keras.layers.Conv2D):
 
 
     def call(self, inputs, training=None):
+        print(K.int_shape(inputs))
         # get offset, shape [batch_size, out_h, out_w, filter_h, * filter_w * channel_out * 2]
         offset = tf.nn.conv2d(inputs,
                               filters=self.offset_layer_kernel,

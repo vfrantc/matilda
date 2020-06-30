@@ -5,14 +5,14 @@ from matilda.transform import make_filter_bank
 class HarmonicTransform(tf.keras.layers.Layer):
     '''Performs orthogonal transform'''
 
-    def __init__(self, ftype='dct', n=3, level=None, strides=(1, 1, 1, 1), **kwargs):
+    def __init__(self, ftype='dct', n=3, level=None, normalize=True, strides=(1, 1, 1, 1), **kwargs):
         super().__init__(**kwargs)
         self._ftype = ftype
         self._n = n
         self._level = level
         self._strides = strides
 
-        self.filter_bank = tf.Variable(initial_value=make_filter_bank(ftype=ftype, n=n, level=level),
+        self.filter_bank = tf.Variable(initial_value=make_filter_bank(ftype=ftype, n=n, level=level, l1_norm=normalize),
                                        trainable=False)
 
     def build(self, input_shape):
