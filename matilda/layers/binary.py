@@ -1,3 +1,4 @@
+import numpy as np
 import tensorflow as tf
 
 def round_through(x):
@@ -60,6 +61,9 @@ def xnorize(W, H=1., axis=None, keepdims=False):
     Wa = _mean_abs(W, axis, keepdims)
 
     return Wa, Wb
+
+def binary_tanh(x):
+    return binary_tanh_op(x)
 
 class Clip(tf.keras.constraints.Constraint):
     def __init__(self, min_value, max_value=None):
