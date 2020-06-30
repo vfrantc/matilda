@@ -20,6 +20,7 @@ class HarmonicTransform(tf.keras.layers.Layer):
 
     def call(self, x_input, training=False):
         # split input
+        print(x_input.shape)
         groups = tf.split(x_input, axis=3, num_or_size_splits=x_input.shape[-1])
 
         # convolve every input channel with the filter bank

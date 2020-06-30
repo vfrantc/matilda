@@ -93,9 +93,10 @@ class DeformOffset(tf.keras.layers.Conv2D):
         inputs = self._pad_input(inputs)
 
         # some length
-        batch_size = self._batch_size
-        if inputs.get_shape()[0] is not None:
-            batch_size = int(inputs.get_shape()[0])
+        if inputs.get_shape()[0] is None:
+            batch_size = self._batch_size
+        else:
+            batch_size = int(input.get_shape()[0])
 
         channel_in = int(inputs.get_shape()[-1])
         in_h, in_w = [int(i) for i in inputs.get_shape()[1: 3]]  # input feature map size
@@ -103,7 +104,7 @@ class DeformOffset(tf.keras.layers.Conv2D):
         filter_h, filter_w = self.kernel_size
 
         # get x, y axis offset
-        offset = tf.reshape(offset, [batch_size, out_h, out_w, -1, 2])
+        offset = tf.reshape(offset, [-1, out_h, out_w, self.kernel_size[0] * self.kernel_size[1], 2])
         y_off, x_off = offset[:, :, :, :, 0], offset[:, :, :, :, 1]
 
         # input feature map gird coordinates
@@ -127,7 +128,7 @@ class DeformOffset(tf.keras.layers.Conv2D):
 
         # get pixel values
         indices = [[y0, x0], [y0, x1], [y1, x0], [y1, x1]]
-        p0, p1, p2, p3 = [DeformOffset._get_pixel_values_at_point(inputs, i) for i in indices]
+        p0, p1, p2, p3 = [self._get_pixel_values_at_point(inputs, i) for i in indices]
 
         # cast to float
         x0, x1, y0, y1 = [tf.cast(i, tf.float32) for i in [x0, x1, y0, y1]]
@@ -142,9 +143,9 @@ class DeformOffset(tf.keras.layers.Conv2D):
         pixels = tf.add_n([w0 * p0, w1 * p1, w2 * p2, w3 * p3])
 
         # reshape the "big" feature map
-        pixels = tf.reshape(pixels, [batch_size, out_h, out_w, filter_h, filter_w, self.num_deformable_group, channel_in])
+        pixels = tf.reshape(pixels, [-1, out_h, out_w, filter_h, filter_w, self.num_deformable_group, channel_in])
         pixels = tf.transpose(pixels, [0, 1, 3, 2, 4, 5, 6])
-        pixels = tf.reshape(pixels, [batch_size, out_h * filter_h, out_w * filter_w, channel_in])
+        pixels = tf.reshape(pixels, [-1, out_h * filter_h, out_w * filter_w, channel_in])
         return pixels
 
     def _pad_input(self, inputs):
@@ -194,8 +195,7 @@ class DeformOffset(tf.keras.layers.Conv2D):
                 for i in [x, y]]  # shape [1, out_h, out_w, filter_h * filter_w]
         return y, x
 
-    @staticmethod
-    def _get_pixel_values_at_point(inputs, indices):
+    def _get_pixel_values_at_point(self, inputs, indices):
         """get pixel values
         :param inputs:
         :param indices: shape [batch_size, H, W, I], I = filter_h * filter_w * channel_out
@@ -203,6 +203,8 @@ class DeformOffset(tf.keras.layers.Conv2D):
         """
         y, x = indices
         batch, h, w, n = y.get_shape().as_list()[0: 4]
+        if batch is None:
+            batch = self._batch_size
 
         batch_idx = tf.reshape(tf.range(0, batch), (batch, 1, 1, 1))
         b = tf.tile(batch_idx, (1, h, w, n))
@@ -220,7 +222,7 @@ if __name__ == '__main__':
 
     model = tf.keras.models.Sequential([
         tf.keras.layers.Input(shape=(32, 32, 3)),
-        DeformOffset(32, [4, 4], num_deformable_group=1),
+        DeformOffset(32, [4, 4], batch_size=64, num_deformable_group=1),
         mt.HarmonicTransform(ftype='dct', n=4, strides=(1, 4, 4, 1)),
         mt.HarmonicCombine(32, activation='relu'),
         tf.keras.layers.Conv2D(32, kernel_size=(4, 4), activation='relu'),

@@ -9,7 +9,7 @@ __all__ = ['make_filter_bank',
            'get_available']
 
 
-AVAILABLE_TRANSFORMS = ('dct', 'wlsh', 'slant', 'chebychev')
+AVAILABLE_TRANSFORMS = ('dct', 'wlsh', 'slant', 'chebychev', 'paley')
 
 def get_available():
     return AVAILABLE_TRANSFORMS
