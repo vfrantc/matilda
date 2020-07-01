@@ -12,3 +12,5 @@ from .binary import BinaryDense
 from .binary import binary_tanh
 
 from .alpha import AlphaRooting
+
+from .norm import CoeffNormalization
