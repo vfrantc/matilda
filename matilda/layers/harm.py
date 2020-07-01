@@ -2,6 +2,31 @@ import numpy as np
 import tensorflow as tf
 from matilda.transform import make_filter_bank
 
+
+class SummationHarmonicLayer(tf.keras.layers.Layer):
+  def __init__(self, ftype='dct', size=4):
+    super(SummationHarmonicLayer, self).__init__()
+    self._size = size
+    self._filters = tf.Variable(initial_value = make_filter_bank(ftype=ftype, n=size),
+                                trainable=False)
+
+  def build(self, input_shape):
+    # nothing to do
+    pass
+
+  def call(self, x_input, training=False):
+    # split input
+    groups = tf.split(x_input, axis=3, num_or_size_splits=x_input.shape[-1])
+    # convolve every input channel with filter bank
+    conv_groups = [tf.nn.conv2d(input = group,
+                                filters=self._filters,
+                                strides=(1,),
+                                padding='SAME') for group in groups]
+
+    # summarize output feature maps
+    sums = tf.add_n(conv_groups)
+    return sums
+
 class HarmonicTransform(tf.keras.layers.Layer):
     '''Performs orthogonal transform'''
 

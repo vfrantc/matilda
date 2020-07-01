@@ -2,42 +2,51 @@ import numpy as np
 import tensorflow as tf
 from matilda.transform import make_filter_bank
 
-class AlphaRooting(tf.keras.layers.Layer):
-  def __init__(self, initial_alpha, output=16, size=3):
-    super(AlphaRooting, self).__init__()
-    self._initial_alpha = initial_alpha
-    self._size = size
-    self._output = output
-    self._filters = tf.Variable(initial_value = make_filter_bank(n=size, groups=1, expand_dim=2),
-                                trainable=False)
-    #self.batch_norm = tf.keras.layers.BatchNormalization()
+class Clip(tf.keras.constraints.Constraint):
 
-  def build(self, input_shape):
-    self.alpha = self.add_weight(shape=(1,
-                                        1,
-                                        1,
-                                        input_shape[-1]*self._size*self._size),
-                                 initializer=tf.keras.initializers.RandomUniform(minval=0.0001, maxval=1.0),
-                                 trainable=True)
+  def __init__(self, min_value, max_value=None):
+    self.min_value = min_value
+    self.max_value = max_value
+    if self.max_value is None:
+      self.max_value = -self.min_value
+    if self.min_value > self.max_value:
+      self.min_value, self.max_value = self.max_value, self.min_value
 
-  def call(self, x_input, training=False):
-    # split input
-    groups = tf.split(x_input, axis=3, num_or_size_splits=3)
-    # convolve every input channel with filter bank
-    conv_groups = [tf.nn.conv2d(input = group,
-                                filters=self._filters,
-                                strides=(1,),
-                                padding='SAME') for group in groups]
-
-    # concatenate output feature maps
-    filtered = tf.concat(conv_groups, axis=3)
-
-    # at this point filtered contains stack of filter responses, for each channel
-    powered = tf.math.multiply(tf.sign(filtered), tf.pow(tf.abs(filtered), tf.abs(self.alpha)))
-    return powered
+  def __call__(self, p):
+    return tf.clip_by_value(p, self.min_value, self.max_value)
 
   def get_config(self):
-      config = super(AlphaHarmonicLayer, self).get_config()
-      config.update({'output': self._output,
-                     'size': self._size})
-      return config
+    return {"min_value": self.min_value,
+            "max_value": self.max_value}
+
+
+
+class AlphaRooting(tf.keras.layers.Layer):
+
+    def __init__(self, alpha=0.9, trainable=True, min_value=0.8, max_value=1.2, **kwargs):
+        super().__init__(**kwargs)
+        self._alpha = alpha
+        self._min_value = min_value
+        self._max_value = max_value
+        self._trainable = trainable
+        self.alpha_constraint = Clip(min_value=self._min_value, max_value=self._max_value)
+
+    def build(self, input_shape):
+        self.alpha = self.add_weight(shape=(1,
+                                            1,
+                                            1,
+                                            input_shape[-1]),
+                                     initializer=tf.keras.initializers.Constant(value=self._alpha),
+                                     trainable=self._trainable,
+                                     constraint=self.alpha_constraint)
+        self.built = True
+
+    def call(self, x_input, train=False):
+        return tf.math.multiply(tf.sign(x_input), tf.pow(tf.abs(x_input), self.alpha))
+
+    def get_config(self):
+        config = super().get_config()
+        config.update({'alpha': self._alpha,
+                       'trainable': self._trainable,
+                       'min_value': self._min_value,
+                       'max_value': self._max_value})
