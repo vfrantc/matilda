@@ -20,7 +20,6 @@ class Clip(tf.keras.constraints.Constraint):
             "max_value": self.max_value}
 
 
-
 class AlphaRooting(tf.keras.layers.Layer):
 
     def __init__(self, alpha=0.9, trainable=True, min_value=0.8, max_value=1.2, **kwargs):
