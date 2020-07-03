@@ -96,7 +96,7 @@ class DeformableConvLayer(tf.keras.layers.Conv2D):
             trainable=True,
             dtype=self.dtype)
         self.built = True
-        
+
 
     def call(self, inputs, training=None, **kwargs):
         # get offset, shape [batch_size, out_h, out_w, filter_h, * filter_w * channel_out * 2]
