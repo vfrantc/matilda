@@ -1,10 +1,7 @@
 import numpy as np
 import tensorflow as tf
 
-class DeformOffset(object):
-    pass
-
-class DeformableConvLayer(tf.keras.layers.Conv2D):
+class DeformOffset(tf.keras.layers.Conv2D):
     """Only support "channel last" data format"""
     def __init__(self,
                  filters,
@@ -60,23 +57,6 @@ class DeformableConvLayer(tf.keras.layers.Conv2D):
         # kernel_shape = self.kernel_size + (input_dim, self.filters)
         # we want to use depth-wise conv
         kernel_shape = self.kernel_size + (self.filters * input_dim, 1)
-        self.kernel = self.add_weight(
-            name='kernel',
-            shape=kernel_shape,
-            initializer=self.kernel_initializer,
-            regularizer=self.kernel_regularizer,
-            constraint=self.kernel_constraint,
-            trainable=True,
-            dtype=self.dtype)
-        if self.use_bias:
-            self.bias = self.add_weight(
-                name='bias',
-                shape=(self.filters,),
-                initializer=self.bias_initializer,
-                regularizer=self.bias_regularizer,
-                constraint=self.bias_constraint,
-                trainable=True,
-                dtype=self.dtype)
 
         # create offset conv layer
         offset_num = self.kernel_size[0] * self.kernel_size[1] * self.num_deformable_group
@@ -111,20 +91,27 @@ class DeformableConvLayer(tf.keras.layers.Conv2D):
         inputs = self._pad_input(inputs)
 
         # some length
-        batch_size = int(inputs.get_shape()[0])
-        channel_in = int(inputs.get_shape()[-1])
-        in_h, in_w = [int(i) for i in inputs.get_shape()[1: 3]]  # input feature map size
-        out_h, out_w = [int(i) for i in offset.get_shape()[1: 3]]  # output feature map size
+        dims = inputs.shape.as_list()
+        batch_size = dims[0]
+        if batch_size is None:
+            batch_size = -1
+        channel_in = dims[-1]
+        in_h, in_w = [int(i) for i in dims[1: 3]]  # input feature map size
+        out_h, out_w = [int(i) for i in dims[1: 3]]  # output feature map size
         filter_h, filter_w = self.kernel_size
 
         # get x, y axis offset
-        offset = tf.reshape(offset, [batch_size, out_h, out_w, -1, 2])
+        offset = tf.reshape(offset, [batch_size, out_h, out_w, self.kernel_size[0]*self.kernel_size[1], 2])
         y_off, x_off = offset[:, :, :, :, 0], offset[:, :, :, :, 1]
 
         # input feature map gird coordinates
         y, x = self._get_conv_indices([in_h, in_w])
         y, x = [tf.expand_dims(i, axis=-1) for i in [y, x]]
-        y, x = [tf.tile(i, [batch_size, 1, 1, 1, self.num_deformable_group]) for i in [y, x]]
+        if batch_size == -1:
+            reps = 1
+        else:
+            reps = batch_size
+        y, x = [tf.tile(i, [reps, 1, 1, 1, self.num_deformable_group]) for i in [y, x]]
         y, x = [tf.reshape(i, [*i.shape[0: 3], -1]) for i in [y, x]]
         y, x = [tf.cast(i, tf.float32) for i in [y, x]]
 
@@ -142,7 +129,7 @@ class DeformableConvLayer(tf.keras.layers.Conv2D):
 
         # get pixel values
         indices = [[y0, x0], [y0, x1], [y1, x0], [y1, x1]]
-        p0, p1, p2, p3 = [DeformableConvLayer._get_pixel_values_at_point(inputs, i) for i in indices]
+        p0, p1, p2, p3 = [DeformOffset._get_pixel_values_at_point(inputs, i) for i in indices]
 
         # cast to float
         x0, x1, y0, y1 = [tf.cast(i, tf.float32) for i in [x0, x1, y0, y1]]
@@ -160,20 +147,7 @@ class DeformableConvLayer(tf.keras.layers.Conv2D):
         pixels = tf.reshape(pixels, [batch_size, out_h, out_w, filter_h, filter_w, self.num_deformable_group, channel_in])
         pixels = tf.transpose(pixels, [0, 1, 3, 2, 4, 5, 6])
         pixels = tf.reshape(pixels, [batch_size, out_h * filter_h, out_w * filter_w, self.num_deformable_group, channel_in])
-
-        # copy channels to same group
-        feat_in_group = self.filters // self.num_deformable_group
-        pixels = tf.tile(pixels, [1, 1, 1, 1, feat_in_group])
-        pixels = tf.reshape(pixels, [batch_size, out_h * filter_h, out_w * filter_w, -1])
-
-        # depth-wise conv
-        out = tf.nn.depthwise_conv2d(pixels, self.kernel, [1, filter_h, filter_w, 1], 'VALID')
-        # add the output feature maps in the same group
-        out = tf.reshape(out, [batch_size, out_h, out_w, self.filters, channel_in])
-        out = tf.reduce_sum(out, axis=-1)
-        if self.use_bias:
-            out += self.bias
-        return self.activation(out)
+        return pixels
 
     def _pad_input(self, inputs):
         """Check if input feature map needs padding, because we don't use the standard Conv() function.
@@ -248,7 +222,7 @@ if __name__ == '__main__':
 
     model = tf.keras.models.Sequential([
         tf.keras.layers.Input(shape=(32, 32, 3)),
-        DeformableConvLayer(32, [4, 4], num_deformable_group=1),
+        DeformOffset(32, [4, 4], num_deformable_group=1),
         tf.keras.layers.Conv2D(32, kernel_size=(4, 4), activation='relu'),
         tf.keras.layers.MaxPool2D(2, [2, 2]),
         tf.keras.layers.Conv2D(64, [4, 4], activation='relu'),
