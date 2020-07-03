@@ -64,7 +64,7 @@ def wrn4(input_shape, depth=16, width=8, num_classes=10, dropout=0.3):
                                            epsilon=1e-5,
                                            gamma_initializer='uniform')(x)
     x = tf.keras.layers.Activation('relu')(x)
-    x = tf.keras.layers.AveragePooling2D()(x)
+    x = tf.keras.layers.AveragePooling2D(pool_size=8)(x)
     y = tf.keras.layers.Flatten()(x)
     outputs = tf.keras.layers.Dense(num_classes,
                                     activation='softmax',
