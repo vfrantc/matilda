@@ -52,7 +52,7 @@ def wrn(input_shape, depth=16, width=8, num_classes=10, dropout=0.3):
     widths = [int(v * width) for v in (16, 32, 64)]
 
     inputs = tf.keras.layers.Input(shape=input_shape, name="image")
-    x = tf.keras.layers.Conv2D(16, kernel_size=3, activation=None)(inputs)
+    x = tf.keras.layers.Conv2D(16, kernel_size=3, activation=None, padding='same')(inputs)
     x = tf.keras.layers.BatchNormalization()(x)
     x = tf.keras.layers.Activation('relu')(x)
 
