@@ -247,7 +247,7 @@ def show_filter_bank(fb, figsize=(16, 12)):
     plt.show()
 
 def make_filter_bank(ftype='dct', n=4, level=None, DC=True, l1_norm=True):
-    assert ftype in AVAILABLE_TRANSFORMS
+    #assert ftype in AVAILABLE_TRANSFORMS
     fname = ftype.strip().lower()
     filters = None
     if fname == 'dct':
