@@ -14,6 +14,7 @@ AVAILABLE_TRANSFORMS = ('dct', 'wlsh', 'slant', 'chebychev', 'paley')
 def get_available():
     return AVAILABLE_TRANSFORMS
 
+'''
 def _chebychev_filters(n=3, groups=1, expand_dim=1, level=None, DC=True, l1_norm=True):
     # Use one of predefined matrices
     _filters = [(1 / 9) * np.array([[1, 1, 1], [1, 1, 1], [1, 1, 1]], dtype=np.float32),
@@ -44,6 +45,40 @@ def _chebychev_filters(n=3, groups=1, expand_dim=1, level=None, DC=True, l1_norm
             m += 1
     filter_bank = np.tile(np.expand_dims(filter_bank, axis=expand_dim), (1,1,1, groups))
     return filter_bank
+'''
+
+
+def _chebychev_filters(n=3, groups=1, expand_dim=1, level=None, DC=True, l1_norm=True):
+    # Use one of predefined matrices
+    H = np.zeros((n, n), dtype=np.float32)
+    for k in range(n):
+        for m in range(n):
+            if m == 0:
+                pm = 1
+            else:
+                pm = 2
+            H[m, k] = pm * math.pow(-1, m) * math.cos((math.pi * m / n) * (k + 0.5)) / n
+
+    if level is None:
+        filter_bank = np.zeros((n, n, (n**2-int(not DC))), dtype=np.float32)
+    else:
+        filter_bank = np.zeros((n, n, (level*(level+1)//2-int(not DC))), dtype=np.float32)
+
+    m = 0
+    for i in range(n):
+        for k in range(n):
+            if (not DC and i == 0 and k == 0) or (not level is None and i + k >= level):
+                continue
+
+            filter_bank[:, :, m] = H[i, :].reshape(n, -1).dot(H[k, :].reshape(-1, n))
+
+            if l1_norm:
+                filter_bank[:, :, m] /= np.sum(np.abs(filter_bank[:, :, m]))
+            m += 1
+
+    filter_bank = np.tile(np.expand_dims(filter_bank, axis=expand_dim), (1, 1, 1, groups))
+    return filter_bank
+
 
 def _dct_filters(n=3, groups=1, expand_dim=2, level=None, DC=True, l1_norm=True):
     if level is None:
