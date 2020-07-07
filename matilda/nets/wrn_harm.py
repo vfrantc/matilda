@@ -10,7 +10,7 @@ def block(x, width, stride, dropout, ftype='dct', sz=3):
     o1 = tf.keras.layers.BatchNormalization(axis=-1, momentum=0.1, epsilon=1e-5,  gamma_initializer='uniform')(x)
     o1 = tf.keras.layers.Activation('relu')(o1)
     y = LinearHarmonic(width,
-                       ftype='ftype',
+                       ftype=ftype,
                        kernel_size=(sz, sz),
                        strides=(stride, stride),
                        padding='same',
