@@ -232,11 +232,11 @@ class DeformableConvLayer(layers.Conv2D):
         x, y = tf.meshgrid(tf.range(feat_w), tf.range(feat_h))  # shape: 2d, x: h*w, y: h*w
         # reshape meshgrid into 1,h,w,1
         x, y = [tf.reshape(i, [1, *i.get_shape(), 1]) for i in [x, y]]  # shape: 4d, [1, h, w, 1]
-        x, y = [tf.image.extract_image_patches(i,
-                                               [1, *self.kernel_size, 1],
-                                               [1, *self.strides, 1],
-                                               [1, *self.dilation_rate, 1],
-                                               'VALID')
+        x, y = [tf.image.extract_patches(i,
+                                         [1, *self.kernel_size, 1],
+                                         [1, *self.strides, 1],
+                                         [1, *self.dilation_rate, 1],
+                                         'VALID')
                 for i in [x, y]]  # shape [1, out_h, out_w, filter_h * filter_w]
         return y, x
 
@@ -259,6 +259,7 @@ class DeformableConvLayer(layers.Conv2D):
 
     @staticmethod
     def _rebuild_shape_to_batch(tensor_to_rebuild):
+        # TODO: May I remove this??
         """In _get_pixel_values_at_point, batch dimension has already been set to stablize graph,
         We convert it back to None for batch dim
         """
@@ -496,7 +497,7 @@ class DeformOffset(layers.Conv2D):
 if __name__ == '__main__':
     import matilda as mt
     input = tf.keras.layers.Input(shape=(32, 32, 3))
-    x = DeformOffset(16, kernel_size=(4, 4))(input)
+    x = DeformableConvLayer(16, kernel_size=(4, 4), activation='relu')(input)
     m = tf.keras.models.Model(inputs=input, outputs=x)
 
     g = np.random.randn(1, 32, 32, 3)
