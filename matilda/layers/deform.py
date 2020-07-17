@@ -410,11 +410,12 @@ class DeformOffset(layers.Conv2D):
 
 
         # reshape the "big" feature map
+        # reshape the "big" feature map
         pixels = tf.reshape(pixels,
                             [batch_size, out_h, out_w, filter_h, filter_w, self.num_deformable_group, channel_in])
         pixels = tf.transpose(pixels, [0, 1, 3, 2, 4, 5, 6])
         pixels = tf.reshape(pixels,
-                            [batch_size, out_h * filter_h, out_w * filter_w, channel_in])
+                            [batch_size, out_h * filter_h, out_w * filter_w, self.num_deformable_group, channel_in])
 
         return pixels
 
